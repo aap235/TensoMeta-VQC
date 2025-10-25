@@ -121,7 +121,7 @@ def main():
     val_loader = DataLoader(tokenized_datasets["test"], batch_size=64, collate_fn=data_collator)
 
     #Обучение
-    model = TextClassifier(num_classes=14, lr=1e-4)
+    model = TextClassifier(n_wires = 10, n_layers= 2, num_class=14, lr=1e-3)
     logger = pl.loggers.CSVLogger("logs", name="text_classification")
     trainer = pl.Trainer(
         max_epochs=20,

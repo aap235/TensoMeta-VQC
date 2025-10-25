@@ -14,6 +14,7 @@ class VQC(nn.Module):
         self.entangle_pairs = [(i, i + 1) for i in range(0, n_wires - 1, 2)]
         if n_wires > 2:
             self.entangle_pairs.append((n_wires - 1, 0))  
+        self.measure = tq.MeasureAll(tq.PauliZ)
        
     def forward(self, params):
         B = params.shape[0]
@@ -38,15 +39,14 @@ class VQC(nn.Module):
                     tq.RZ(has_params=False)(qdev, wires=i, params=theta_z)
 
         #Измерение
-        states = qdev.get_states_1d()  # комплекснозначный тензор
-        probs = torch.abs(states) ** 2  # [B, 2**n_wires]
-        return  probs
+        out = self.measure(qdev)
+        return  out
     
 class TensorMeta_VQC(nn.Module):
-    def __init__(self, num_class=2, bert_model_name="huawei-noah/TinyBERT_General_4L_312D", bert_dim=312, n_layers = 10):
+    def __init__(self, n_wires = 4, num_class=2,  n_layers = 10, bert_model_name="huawei-noah/TinyBERT_General_4L_312D", bert_dim=312):
         super().__init__()
-        self.n_wires = math.ceil(math.log2(num_class))
-        self.n_params = 3 * self.n_wires * n_layers 
+        self.n_wires = n_wires
+        self.n_params = 3 * n_wires * n_layers 
 
         self.bert = BertModel.from_pretrained(bert_model_name)
         
@@ -55,8 +55,8 @@ class TensorMeta_VQC(nn.Module):
         
         self.tn = TensorRing(input_dim=bert_dim, output_dim=self.n_params, rank = 4, leg_dim = 2)
         #self.tn = BrickTube(bond_dim=3, input_dim=bert_dim, output_dim=self.n_params, n_layers=2)
-        self.vqc = VQC(n_wires = self.n_wires)
-        self.proj = nn.Linear(2**self.n_wires, num_class)
+        self.vqc = VQC(n_wires = self.n_wires, n_layers=n_layers)
+        self.proj = nn.Linear(self.n_wires, num_class)
         
 
     def forward(self, input_ids, attention_mask=None):

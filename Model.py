@@ -6,13 +6,13 @@ import torch
 from torchmetrics import Accuracy
 
 class TextClassifier(pl.LightningModule):
-    def __init__(self, num_classes=4, lr=1e-3):
+    def __init__(self, n_wires = 4, n_layers = 10, num_class=4, lr=1e-3):
         super().__init__()
         self.save_hyperparameters()
-        self.model = TensorMeta_VQC(num_class=num_classes)
+        self.model = TensorMeta_VQC(n_wires = n_wires, n_layers = n_layers, num_class=num_class)
         self.criterion = torch.nn.CrossEntropyLoss()
-        self.train_acc = Accuracy(task="multiclass", num_classes=num_classes)
-        self.val_acc = Accuracy(task="multiclass", num_classes=num_classes)
+        self.train_acc = Accuracy(task="multiclass", num_classes=num_class)
+        self.val_acc = Accuracy(task="multiclass", num_classes=num_class)
 
     def forward(self, input_ids, attention_mask):
         return self.model(input_ids, attention_mask)
