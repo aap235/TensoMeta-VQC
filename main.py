@@ -111,7 +111,7 @@ def main():
     tokenized_datasets = dataset.map(
         tokenize_function,
         batched=True,
-        remove_columns=["text"]  # удаляем исходный текст
+        remove_columns=["content"]  # удаляем исходный текст
     )
     tokenized_datasets = tokenized_datasets.rename_column("label", "labels")
     tokenized_datasets.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
