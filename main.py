@@ -8,10 +8,30 @@ from transformers import BertTokenizer, DataCollatorWithPadding
 import torch
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')  # важно для сервера
+matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 
 def plot_metrics_per_epoch(log_dir):
+    # Настройка стиля под научную публикацию
+    plt.rcParams.update({
+        "font.size": 12,
+        "axes.titlesize": 14,
+        "axes.labelsize": 12,
+        "legend.fontsize": 11,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "font.family": "serif",          # serif как в статьях
+        "text.usetex": False,            # если нет LaTeX — False; если есть — можно True
+        "figure.figsize": (8, 3.5),      # компактный, как в колонке статьи
+        "axes.linewidth": 0.8,
+        "axes.edgecolor": "black",
+        "grid.alpha": 0.3,
+        "grid.linestyle": "--",
+        "savefig.dpi": 300,
+        "savefig.bbox": "tight",
+        "savefig.pad_inches": 0.05,
+    })
+
     # Найти последнюю версию
     versions = [d for d in os.listdir(log_dir) if d.startswith("version_")]
     if not versions:
@@ -21,48 +41,55 @@ def plot_metrics_per_epoch(log_dir):
     csv_path = os.path.join(log_dir, latest_version, "metrics.csv")
     
     df = pd.read_csv(csv_path)
-
-    # Удаляем строки без эпохи (иногда бывают)
     df = df.dropna(subset=['epoch'])
     df['epoch'] = df['epoch'].astype(int)
-
-    # Группируем по эпохе: берём последнее значение в эпохе (или среднее)
-    # В Lightning при log_every_n_steps > 1 может быть несколько строк на эпоху.
-    # Мы возьмём последнюю запись в эпохе — она соответствует концу эпохи.
     df_epoch = df.groupby('epoch').last().reset_index()
-
-    # Построение
-    fig, ax = plt.subplots(1, 2, figsize=(12, 4))
 
     epochs = df_epoch['epoch']
 
-    # Loss
+    # Цвета и стили, различимые в Ч/Б
+    train_style = {'color': '#1f77b4', 'marker': 'o', 'linestyle': '-', 'markersize': 4}
+    val_style = {'color': '#ff7f0e', 'marker': 's', 'linestyle': '--', 'markersize': 4}
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 3.5))
+
+    # --- Loss ---
     if 'train_loss' in df_epoch.columns:
-        ax[0].plot(epochs, df_epoch['train_loss'], marker='o', label='Train Loss')
+        ax1.plot(epochs, df_epoch['train_loss'], label='Train', **train_style)
     if 'val_loss' in df_epoch.columns:
-        ax[0].plot(epochs, df_epoch['val_loss'], marker='o', label='Val Loss')
-    ax[0].set_xlabel('Epoch')
-    ax[0].set_ylabel('Loss')
-    ax[0].set_title('Loss per Epoch')
-    ax[0].legend()
-    ax[0].grid(True)
+        ax1.plot(epochs, df_epoch['val_loss'], label='Validation', **val_style)
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('Loss')
+    ax1.grid(True, which="both", linestyle="--", linewidth=0.5)
+    ax1.spines['top'].set_visible(False)
+    ax1.spines['right'].set_visible(False)
 
-    # Accuracy
+    # --- Accuracy ---
     if 'train_acc' in df_epoch.columns:
-        ax[1].plot(epochs, df_epoch['train_acc'], marker='o', label='Train Acc')
+        ax2.plot(epochs, df_epoch['train_acc'], label='Train', **train_style)
     if 'val_acc' in df_epoch.columns:
-        ax[1].plot(epochs, df_epoch['val_acc'], marker='o', label='Val Acc')
-    ax[1].set_xlabel('Epoch')
-    ax[1].set_ylabel('Accuracy')
-    ax[1].set_title('Accuracy per Epoch')
-    ax[1].legend()
-    ax[1].grid(True)
+        ax2.plot(epochs, df_epoch['val_acc'], label='Validation', **val_style)
+    ax2.set_xlabel('Epoch')
+    ax2.set_ylabel('Accuracy')
+    ax2.grid(True, which="both", linestyle="--", linewidth=0.5)
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
 
-    plt.tight_layout()
-    plot_path = os.path.join(log_dir, latest_version, "metrics_per_epoch.png")
+    # Общая легенда (можно и отдельно, но так компактнее)
+    handles, labels = ax1.get_legend_handles_labels()
+    if labels:
+        fig.legend(handles, labels, loc='upper center', ncol=2, bbox_to_anchor=(0.5, 1.02))
+
+    plt.tight_layout(rect=[0, 0, 1, 0.95])  # место под легенду сверху
+
+    plot_path = os.path.join(log_dir, latest_version, "metrics_per_epoch.pdf")  # PDF — лучше для статей
     plt.savefig(plot_path)
+    
+    # Также сохраняем PNG для быстрого просмотра
+    plt.savefig(plot_path.replace(".pdf", ".png"), dpi=300)
+    
     plt.close()
-    print(f"Metrics per epoch saved to: {plot_path}")
+    print(f"plot saved to: {plot_path}")
 
 def main():
     #Загрузка датасета
