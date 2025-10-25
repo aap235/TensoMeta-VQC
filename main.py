@@ -100,7 +100,7 @@ def main():
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer, padding=True, max_length=512)
     def tokenize_function(examples):
         return tokenizer(
-            examples["text"],
+            examples["content"],
             truncation=True,
             padding=True,
             max_length=512,
