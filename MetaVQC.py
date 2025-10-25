@@ -3,6 +3,7 @@ import torch.nn as nn
 from tensornetwork import TensorRing, BrickTube
 import torchquantum as tq
 from transformers import BertModel
+import math
 
 class VQC(nn.Module):
     def __init__(self, n_wires, n_layers = 10):
@@ -13,8 +14,7 @@ class VQC(nn.Module):
         self.entangle_pairs = [(i, i + 1) for i in range(0, n_wires - 1, 2)]
         if n_wires > 2:
             self.entangle_pairs.append((n_wires - 1, 0))  
-        self.measure = tq.MeasureAll(tq.PauliZ)
-
+       
     def forward(self, params):
         B = params.shape[0]
         qdev = tq.QuantumDevice(n_wires=self.n_wires, bsz=B, device=params.device)
@@ -38,23 +38,25 @@ class VQC(nn.Module):
                     tq.RZ(has_params=False)(qdev, wires=i, params=theta_z)
 
         #Измерение
-        return self.measure(qdev)  # [B, n_wires]
+        states = qdev.get_states_1d()  # комплекснозначный тензор
+        probs = torch.abs(states) ** 2  # [B, 2**n_wires]
+        return  probs
     
 class TensorMeta_VQC(nn.Module):
     def __init__(self, num_class=2, bert_model_name="huawei-noah/TinyBERT_General_4L_312D", bert_dim=312, n_layers = 10):
         super().__init__()
-        self.n_wires = num_class
-        self.n_params = 3 * num_class * n_layers 
+        self.n_wires = math.ceil(math.log2(num_class))
+        self.n_params = 3 * self.n_wires * n_layers 
 
         self.bert = BertModel.from_pretrained(bert_model_name)
         
         for param in self.bert.parameters():
             param.requires_grad = False
         
-        #self.tn = TensorRing(input_dim=bert_dim, output_dim=self.n_params, rank = 4, leg_dim = 2)
-        self.tn = BrickTube(bond_dim=3, input_dim=bert_dim, output_dim=self.n_params, n_layers=2)
-        self.vqc = VQC(n_wires=self.n_wires, n_layers=n_layers)
-        self.proj = nn.Linear(num_class, num_class)
+        self.tn = TensorRing(input_dim=bert_dim, output_dim=self.n_params, rank = 4, leg_dim = 2)
+        #self.tn = BrickTube(bond_dim=3, input_dim=bert_dim, output_dim=self.n_params, n_layers=2)
+        self.vqc = VQC(n_wires = self.n_wires)
+        self.proj = nn.Linear(2**self.n_wires, num_class)
         
 
     def forward(self, input_ids, attention_mask=None):
