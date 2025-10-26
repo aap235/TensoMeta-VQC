@@ -100,7 +100,7 @@ def main():
 
     #Токенизация 
     tokenizer =  BertTokenizer.from_pretrained("huawei-noah/TinyBERT_General_4L_312D")
-    data_collator = DataCollatorWithPadding(tokenizer=tokenizer, padding=True, max_length=512, pad_to_multiple_of=8)
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer, padding='max_length', max_length=512, pad_to_multiple_of=8)
     def tokenize_function(examples):
         return tokenizer(examples["content"], truncation=True, max_length=512)
 
