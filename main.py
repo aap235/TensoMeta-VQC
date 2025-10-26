@@ -1,5 +1,6 @@
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2" 
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
@@ -10,6 +11,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 def plot_metrics_per_epoch(log_dir):
     # Настройка стиля под научную публикацию
@@ -63,7 +65,7 @@ def plot_metrics_per_epoch(log_dir):
     ax1.grid(True, which="both", linestyle="--", linewidth=0.5)
     ax1.spines['top'].set_visible(False)
     ax1.spines['right'].set_visible(False)
-
+    ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
     # --- Accuracy ---
     if 'train_acc' in df_epoch.columns:
         ax2.plot(epochs, df_epoch['train_acc'], label='Train', **train_style)
@@ -74,6 +76,7 @@ def plot_metrics_per_epoch(log_dir):
     ax2.grid(True, which="both", linestyle="--", linewidth=0.5)
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
+    ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
 
     # Общая легенда (можно и отдельно, но так компактнее)
     handles, labels = ax1.get_legend_handles_labels()
@@ -97,13 +100,11 @@ def main():
 
     #Токенизация 
     tokenizer =  BertTokenizer.from_pretrained("huawei-noah/TinyBERT_General_4L_312D")
-    data_collator = DataCollatorWithPadding(tokenizer=tokenizer, padding=True, max_length=512)
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer, padding=True)
     def tokenize_function(examples):
         return tokenizer(
             examples["content"],
-            truncation=True,
             padding=True,
-            max_length=512,
             return_tensors="pt"
         )
 
@@ -117,14 +118,14 @@ def main():
     tokenized_datasets.set_format("torch", columns=["input_ids", "attention_mask", "labels"])
 
     #Создаем DataLoader для обучения и валидации
-    train_loader = DataLoader(tokenized_datasets["train"], batch_size=64, shuffle=True, collate_fn=data_collator)
-    val_loader = DataLoader(tokenized_datasets["test"], batch_size=64, collate_fn=data_collator)
+    train_loader = DataLoader(tokenized_datasets["train"], batch_size=64, num_workers=16, pin_memory=True, shuffle=True, collate_fn=data_collator)
+    val_loader = DataLoader(tokenized_datasets["test"], batch_size=64, num_workers=16, pin_memory=True, collate_fn=data_collator)
 
     #Обучение
-    model = TextClassifier(n_wires = 10, n_layers= 2, num_class=14, lr=1e-3)
+    model = TextClassifier(n_wires = 3, n_layers= 1, num_class=14, lr=1e-3)
     logger = pl.loggers.CSVLogger("logs", name="text_classification")
     trainer = pl.Trainer(
-        max_epochs=20,
+        max_epochs=3,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=2,
         log_every_n_steps=50,
