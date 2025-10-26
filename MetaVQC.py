@@ -3,7 +3,6 @@ import torch.nn as nn
 from tensornetwork import TensorRing, BrickTube
 import torchquantum as tq
 from transformers import BertModel
-import math
 
 class VQC(nn.Module):
     def __init__(self, n_wires, n_layers = 10):

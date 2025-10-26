@@ -1,6 +1,4 @@
 import pytorch_lightning as pl
-from torch.utils.data import DataLoader
-from datasets import load_dataset
 from MetaVQC import TensorMeta_VQC
 import torch
 from torchmetrics import Accuracy
