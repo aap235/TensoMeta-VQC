@@ -100,13 +100,9 @@ def main():
 
     #Токенизация 
     tokenizer =  BertTokenizer.from_pretrained("huawei-noah/TinyBERT_General_4L_312D")
-    data_collator = DataCollatorWithPadding(tokenizer=tokenizer, padding=True)
+    data_collator = DataCollatorWithPadding(tokenizer=tokenizer, padding=True, max_length=512, pad_to_multiple_of=8)
     def tokenize_function(examples):
-        return tokenizer(
-            examples["content"],
-            padding=True,
-            return_tensors="pt"
-        )
+        return tokenizer(examples["content"], truncation=True, max_length=512)
 
     # Применяем токенизацию ко всему датасету
     tokenized_datasets = dataset.map(
@@ -135,4 +131,5 @@ def main():
     plot_metrics_per_epoch("logs/text_classification")
     
 if __name__ == "__main__":
+    torch.set_float32_matmul_precision('high')
     main()
